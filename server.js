@@ -13,27 +13,31 @@ app.get('/', (req, res) => {
     let url = 'https://api.themoviedb.org/3/movie/936723?api_key=3f3e9c67d14e96fe1c5852bd8585dbc1';
     axios.get(url)
     .then(response => {
-        console.log(response.data.title);
         let data = response.data;
         let releaseDate = new Date(data.release_date).getFullYear();
-        let genres = '';
+        let genresToDisplay = '';
         data.genres.forEach(genre => {
-            genres = genres + `${genre.name}, `;
+            genresToDisplay = genresToDisplay + `${genre.name}, `;            
         });
+        let genresUpdated = genresToDisplay.slice(0, -2) + '.';
+        let posterUrl = `https://www.themoviedb.org/t/p/w600_and_h900_bestv2${data.poster_path}`;
 
-        let genresUpdated = genres.slice(0, -2) + '.';
-        moviePoster = `https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.poster_path}`;
-        console.log(genresUpdated);
         let currentYear = new Date().getFullYear();
-        res.render('index', {movieData: data, releaseDate: releaseDate, genres: genresUpdated, poster: moviePoster, year: currentYear});
+        res.render('index', {
+            dataToRender: data, 
+            year: currentYear,
+            releaseYear: releaseDate,
+            genres: genresUpdated,
+            poster: posterUrl
+        });
     });
 });
 
 app.get('/search', (req, res) => {
-    res.render('search', { movieDetails:'' });
-});
+    res.render('search', {movieDetails:''});
+ });
 
-app.post('/search', (req, res) => {
+ app.post('/search', (req, res) => {
     let userMovieTitle = req.body.movieTitle;
     let movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=3f3e9c67d14e96fe1c5852bd8585dbc1&query=${userMovieTitle}`;
     let genresUrl = 'https://api.themoviedb.org/3/genre/movie/list?api_key=3f3e9c67d14e96fe1c5852bd8585dbc1&language=en-US';
@@ -43,7 +47,8 @@ app.post('/search', (req, res) => {
     .then(axios.spread((movie, genres) => {
         const [movieRaw] = movie.data.results;
         let movieGenreIds = movieRaw.genre_ids;
-        let movieGenres = genres.data.genres;  
+        let movieGenres = genres.data.genres;
+        
         let movieGenresArray = [];
 
         for(let i = 0; i < movieGenreIds.length; i++) { // i++ - i = i + 1
@@ -68,8 +73,10 @@ app.post('/search', (req, res) => {
             overview: movieRaw.overview,
             posterUrl: `https://image.tmdb.org/t/p/w500${movieRaw.poster_path}`
         };
+        
         res.render('search', {movieDetails: movieData});
     }));
+
 });
 
 //new route
@@ -78,6 +85,7 @@ app.post('/getmovie', (req, res) => {
 		req.body.queryResult && req.body.queryResult.parameters && req.body.queryResult.parameters.movie
 			? req.body.queryResult.parameters.movie
 			: '';
+
 	const reqUrl = encodeURI(
 		`http://www.omdbapi.com/?t=${movieToSearch}&apikey=cc6f9d1b`
 	);
@@ -101,6 +109,7 @@ app.post('/getmovie', (req, res) => {
 				dataToSend = `${movie.Title} was released in the year ${movie.Year}. It is directed by ${
 					movie.Director
 				} and stars ${movie.Actors}.\n Here some glimpse of the plot: ${movie.Plot}.`;
+
 				return res.json({
 					fulfillmentText: dataToSend,
 					source: 'getmovie'
